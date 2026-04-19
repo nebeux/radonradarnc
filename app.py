@@ -4,7 +4,6 @@ import pandas as pd
 from geo_lookup import lookup
 
 app = Flask(__name__)
-
 model = joblib.load("radon_model.pkl")
 
 
@@ -42,13 +41,15 @@ def predict():
         return jsonify({"error": f"Model prediction failed: {str(e)}"}), 500
 
     return jsonify({
-        "radon_pci_l":  round(prediction, 2),
-        "elevation_ft": geo["elevation_ft"],
-        "geology":      geo["geology"],
-        "geology_raw":  geo["geology_raw"],
-        "soil_perm":    geo["soil_perm"],
-        "uranium_prox": geo["uranium_prox"],
-        "elev_band":    geo["elev_band"],
+        "radon_pci_l":      round(prediction, 2),
+        "elevation_ft":     geo["elevation_ft"],
+        "geology":          geo["geology"],
+        "geology_raw":      geo["geology_raw"],
+        "soil_perm":        geo["soil_perm"],
+        "uranium_prox":     geo["uranium_prox"],
+        "elev_band":        geo["elev_band"],
+        "estimated":        geo["estimated"],
+        "estimated_fields": geo["estimated_fields"],
     })
 
 

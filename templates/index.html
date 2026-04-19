@@ -457,6 +457,86 @@
     @keyframes spin { to { transform: rotate(360deg); } }
     .result-error { text-align: center; padding: 24px 0; color: #ef4444; font-size: 14px; }
 
+  
+    /* ── Result popup explanation sections ── */
+    .result-explain {
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--text-primary);
+      margin-bottom: 16px;
+      padding: 10px 12px;
+      background: var(--option-bg);
+      border-radius: 8px;
+      border-left: 3px solid var(--accent);
+    }
+    .result-section-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+    .result-factor {
+      margin-bottom: 10px;
+      padding: 10px 12px;
+      background: var(--option-bg);
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+    .factor-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 5px;
+      gap: 8px;
+    }
+    .factor-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-primary);
+      flex-shrink: 0;
+    }
+    .factor-value {
+      font-size: 12px;
+      color: var(--text-info);
+      font-weight: 600;
+      text-align: right;
+    }
+    .factor-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+    .result-caveat {
+      margin-top: 10px;
+      margin-bottom: 10px;
+      padding: 9px 11px;
+      font-size: 11px;
+      line-height: 1.5;
+      color: var(--text-muted);
+      background: var(--option-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+    .result-cta {
+      text-align: center;
+      margin: 12px 0 14px;
+      font-size: 13px;
+    }
+    .result-cta a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .result-cta a:hover { text-decoration: underline; }
+
+    /* make result popup scrollable on small screens */
+    #result-popup {
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
   </style>
 </head>
 <body>
@@ -702,61 +782,133 @@
 
     function renderResult(d) {
       const radon = d.radon_pci_l;
-      // EPA action level: 4 pCi/L; consider action at 2
-      let riskLabel, riskClass;
-      if (radon >= 4)      { riskLabel = "High Risk";    riskClass = "risk-high"; }
-      else if (radon >= 2) { riskLabel = "Moderate Risk"; riskClass = "risk-medium"; }
-      else                 { riskLabel = "Low Risk";      riskClass = "risk-low"; }
 
-      // Needle: cap scale at 10 pCi/L for display
+      let riskLabel, riskClass, riskColor, riskExplain;
+      if (radon >= 4) {
+        riskLabel   = "High Risk";
+        riskClass   = "risk-high";
+        riskColor   = "#ef4444";
+        riskExplain = "The EPA recommends taking action to reduce radon levels above 4 pCi/L. At this level, long-term exposure significantly raises lung cancer risk — even for non-smokers. Consider hiring a certified radon mitigation contractor.";
+      } else if (radon >= 2) {
+        riskLabel   = "Moderate Risk";
+        riskClass   = "risk-medium";
+        riskColor   = "#eab308";
+        riskExplain = "The EPA suggests considering mitigation between 2–4 pCi/L, especially if you spend a lot of time in lower floors. A home radon test kit (available at hardware stores) is the best next step to get an accurate reading.";
+      } else {
+        riskLabel   = "Low Risk";
+        riskClass   = "risk-low";
+        riskColor   = "#22c55e";
+        riskExplain = "Levels below 2 pCi/L are generally considered low risk. The US average is 1.3 pCi/L indoors. Still, the only way to know for certain is to test your home — radon test kits are inexpensive and widely available.";
+      }
+
       const needlePct = Math.min(radon / 10, 1) * 100;
 
-      const geoLabel = d.geology.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
-      const soilLabel = d.soil_perm.charAt(0).toUpperCase() + d.soil_perm.slice(1);
-      const elevLabel = d.elev_band.charAt(0).toUpperCase() + d.elev_band.slice(1);
+      const GEO_LABELS = {
+        granite_gneiss:   "Granite / Gneiss",
+        schist_phyllite:  "Schist / Phyllite",
+        limestone_marble: "Limestone / Marble",
+        mafic_volcanic:   "Mafic / Volcanic",
+        triassic_basin:   "Triassic Basin",
+        alluvium:         "Alluvium",
+        coastal_sediment: "Coastal Sediment",
+      };
+      const GEO_EXPLAIN = {
+        granite_gneiss:   "Granite and gneiss are uranium-rich rocks common in NC's Blue Ridge and Piedmont. As uranium decays, it produces radon gas that can seep upward through soil and into buildings.",
+        schist_phyllite:  "Schist and phyllite are metamorphic rocks with moderate uranium content. They're widespread in NC's Inner Piedmont and are associated with elevated but not extreme radon levels.",
+        limestone_marble: "Carbonate rocks like limestone and marble tend to have moderate radon potential. While not uranium-rich, their fractured nature can allow radon to migrate easily.",
+        mafic_volcanic:   "Mafic rocks (basalt, gabbro, diabase) are low in uranium and generally associated with lower radon levels compared to granitic rocks.",
+        triassic_basin:   "NC's Triassic basins (like the Durham Basin) are filled with sedimentary rock from ancient rift valleys. They have moderate radon potential — lower than granite, higher than coastal sediment.",
+        alluvium:         "Alluvial soils are river-deposited sediments. Radon potential is low-to-moderate and depends heavily on what bedrock the river eroded upstream.",
+        coastal_sediment: "Coastal plain sediments are sandy and low in uranium, giving NC's coast some of the lowest radon levels in the state.",
+      };
+      const SOIL_EXPLAIN = {
+        high:   "High permeability (sandy/gravelly soil) allows radon to migrate upward quickly from bedrock into buildings. NC's Sandhills region is a notable example.",
+        medium: "Medium permeability (loamy soil) is typical of much of NC's Piedmont. Radon migration is moderate — not blocked, but not rushing through either.",
+        low:    "Low permeability (clay-rich soil) slows radon migration from bedrock, but can also trap it under a slab, so the net effect on indoor levels is nuanced.",
+      };
+
+      const geoLabel   = GEO_LABELS[d.geology] || d.geology.replace(/_/g," ");
+      const geoExplain = GEO_EXPLAIN[d.geology] || "";
+      const soilLabel  = d.soil_perm.charAt(0).toUpperCase() + d.soil_perm.slice(1);
+      const soilExplain = SOIL_EXPLAIN[d.soil_perm] || "";
+      const elevLabel  = d.elev_band.charAt(0).toUpperCase() + d.elev_band.slice(1);
+
+      const ef = d.estimated_fields || {};
+      const tag = (flag) => flag
+        ? `<span style="font-size:10px;color:var(--text-muted);margin-left:4px;font-weight:400;">(estimated)</span>`
+        : '';
 
       document.getElementById("result-body").innerHTML = `
         <div class="radon-display">
-          <div class="radon-value" style="color:${radon >= 4 ? '#ef4444' : radon >= 2 ? '#eab308' : '#22c55e'}">${radon}</div>
-          <div class="radon-unit">pCi/L — picocuries per litre</div>
+          <div class="radon-value" style="color:${riskColor}">${radon}</div>
+          <div class="radon-unit">pCi/L &nbsp;·&nbsp; picocuries per litre</div>
           <span class="radon-risk-badge ${riskClass}">${riskLabel}</span>
         </div>
 
+        <div class="result-explain">${riskExplain}</div>
+
         <div class="risk-bar-wrap">
-          <div class="risk-bar-label">Risk Scale (EPA action level: 4 pCi/L)</div>
+          <div class="risk-bar-label">Risk Scale &nbsp;·&nbsp; EPA action level: 4 pCi/L</div>
           <div class="risk-bar-track">
             <div class="risk-bar-needle" style="left:${needlePct}%"></div>
           </div>
-          <div class="risk-bar-ticks"><span>0</span><span>2</span><span>4</span><span>6</span><span>8</span><span>10+</span></div>
-        </div>
-
-        <div class="result-details">
-          <div class="detail-row">
-            <span class="detail-label">Elevation</span>
-            <span class="detail-value">${d.elevation_ft.toLocaleString()} ft (${elevLabel})</span>
-          </div>
-          <div class="detail-row">
-            <span class="detail-label">Bedrock Geology</span>
-            <span class="detail-value">${geoLabel}</span>
-          </div>
-          <div class="detail-row">
-            <span class="detail-label">Soil Permeability</span>
-            <span class="detail-value">${soilLabel}</span>
-          </div>
-          <div class="detail-row">
-            <span class="detail-label">Uranium Proximity</span>
-            <span class="detail-value">${(d.uranium_prox * 100).toFixed(0)}%</span>
+          <div class="risk-bar-ticks">
+            <span>0</span><span>2</span><span>4</span><span>6</span><span>8</span><span>10+</span>
           </div>
         </div>
 
-        ${d.geology_raw && d.geology_raw.includes('fallback') ? `
-          <div style="margin-bottom:12px;padding:8px 10px;border-radius:8px;background:var(--option-bg);border:1px solid var(--border);font-size:11px;color:var(--text-muted);line-height:1.5;">
-            ⚠️ One or more external APIs were unreachable. Regional estimates were used for this prediction — accuracy may be reduced.
-          </div>` : ''}
+        <div class="result-section-label">Why this estimate?</div>
+
+        <div class="result-factor">
+          <div class="factor-header">
+            <span class="factor-name">Bedrock Geology${tag(ef.geology)}</span>
+            <span class="factor-value">${geoLabel}</span>
+          </div>
+          <div class="factor-desc">${geoExplain}</div>
+        </div>
+
+        <div class="result-factor">
+          <div class="factor-header">
+            <span class="factor-name">Elevation${tag(ef.elevation)}</span>
+            <span class="factor-value">${d.elevation_ft.toLocaleString()} ft &nbsp;·&nbsp; ${elevLabel}</span>
+          </div>
+          <div class="factor-desc">Higher elevations in NC correlate with uranium-rich mountain geology. Mountain homes average 2–3× more radon than coastal homes.</div>
+        </div>
+
+        <div class="result-factor">
+          <div class="factor-header">
+            <span class="factor-name">Soil Permeability${tag(ef.soil)}</span>
+            <span class="factor-value">${soilLabel}</span>
+          </div>
+          <div class="factor-desc">${soilExplain}</div>
+        </div>
+
+        <div class="result-factor">
+          <div class="factor-header">
+            <span class="factor-name">Uranium Proximity</span>
+            <span class="factor-value">${(d.uranium_prox * 100).toFixed(0)}%</span>
+          </div>
+          <div class="factor-desc">A measure of how close this location is to uranium-bearing rock formations. Uranium is the parent element of radon — the more uranium in the bedrock, the more radon is continuously generated.</div>
+        </div>
+
+        ${d.estimated ? `
+        <div class="result-caveat">
+          ⚠️ Some data points were estimated from regional averages because external APIs were unavailable.
+          ${ef.geology ? ' Geology was inferred from elevation.' : ''}
+          ${ef.elevation ? ' Elevation was interpolated from a regional grid.' : ''}
+          ${ef.soil ? ' Soil data used a regional estimate.' : ''}
+          For the most accurate result, test your home with a certified radon kit.
+        </div>` : ''}
+
+        <div class="result-cta">
+          <a href="https://www.epa.gov/radon/how-do-i-get-radon-test-kit-are-they-free" target="_blank" rel="noopener">
+            Find a certified radon test kit →
+          </a>
+        </div>
+
         <button class="result-footer-btn" onclick="closeResult()">Close</button>
       `;
     }
-
     function closeResult() {
       document.getElementById("result-overlay").classList.remove("open");
     }

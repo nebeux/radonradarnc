@@ -1,37 +1,81 @@
 import requests
 import math
 
-URANIFEROUS_SYMBOLS = {"Zgn", "Ygn", "pCgn", "Xgn", "gr", "Qgr", "Pgr", "Zs", "Ys", "pCs", "phy", "Zph"}
-
 USGS_LITH_MAP = {
+    # Felsic igneous / granite-gneiss family
     "granite":          "granite_gneiss",
-    "gneiss":           "granite_gneiss",
     "granitic":         "granite_gneiss",
+    "gneiss":           "granite_gneiss",
+    "gneissic":         "granite_gneiss",
+    "orthogneiss":      "granite_gneiss",
+    "paragneiss":       "granite_gneiss",
     "intrusive":        "granite_gneiss",
     "plutonic":         "granite_gneiss",
     "felsic":           "granite_gneiss",
+    "rhyolite":         "granite_gneiss",
+    "monzonite":        "granite_gneiss",
+    "tonalite":         "granite_gneiss",
+    "granodiorite":     "granite_gneiss",
+    "syenite":          "granite_gneiss",
+    "pegmatite":        "granite_gneiss",
+    "aplite":           "granite_gneiss",
+    # Metamorphic / schist-phyllite family
     "schist":           "schist_phyllite",
     "phyllite":         "schist_phyllite",
+    "slate":            "schist_phyllite",
     "metamorphic":      "schist_phyllite",
     "migmatite":        "schist_phyllite",
+    "amphibolite":      "schist_phyllite",
+    "mylonite":         "schist_phyllite",
+    "quartzite":        "schist_phyllite",
+    "metasediment":     "schist_phyllite",
+    "metavolcanic":     "schist_phyllite",
+    "greenstone":       "schist_phyllite",
+    # Carbonate family
     "limestone":        "limestone_marble",
     "marble":           "limestone_marble",
     "carbonate":        "limestone_marble",
+    "dolomite":         "limestone_marble",
+    "dolostone":        "limestone_marble",
+    "calcareous":       "limestone_marble",
+    # Mafic family
     "basalt":           "mafic_volcanic",
     "mafic":            "mafic_volcanic",
     "diabase":          "mafic_volcanic",
     "diorite":          "mafic_volcanic",
     "gabbro":           "mafic_volcanic",
     "volcanic":         "mafic_volcanic",
+    "andesite":         "mafic_volcanic",
+    "ultramafic":       "mafic_volcanic",
+    "peridotite":       "mafic_volcanic",
+    "dunite":           "mafic_volcanic",
+    # Triassic basin sedimentary
     "triassic":         "triassic_basin",
     "mudstone":         "triassic_basin",
-    "sandstone":        "triassic_basin",
+    "shale":            "triassic_basin",
+    "conglomerate":     "triassic_basin",
+    "arkose":           "triassic_basin",
+    "redbeds":          "triassic_basin",
+    "red bed":          "triassic_basin",
+    # Alluvium
     "alluvium":         "alluvium",
     "alluvial":         "alluvium",
-    "sand":             "coastal_sediment",
-    "clay":             "coastal_sediment",
-    "sediment":         "coastal_sediment",
+    "fluvial":          "alluvium",
+    "terrace":          "alluvium",
+    "gravel":           "alluvium",
+    # Coastal / low-lying sediment — should only trigger on explicit coastal terms
+    "coastal":          "coastal_sediment",
+    "marine":           "coastal_sediment",
+    "estuarine":        "coastal_sediment",
+    "beach":            "coastal_sediment",
+    "swamp":            "coastal_sediment",
+    "peat":             "coastal_sediment",
 }
+
+# Note: "sandstone", "sand", "clay", "sediment" are intentionally removed from
+# the coastal_sediment bucket — they appear in Triassic basin and alluvium
+# descriptions too, so we let the more specific keys above catch them first,
+# and only fall back to the elevation-based heuristic if nothing matches.
 
 GEOLOGY_SCORE = {
     "granite_gneiss":   6,
@@ -43,18 +87,14 @@ GEOLOGY_SCORE = {
     "coastal_sediment": 1,
 }
 
-SOIL_SCORE     = {"high": 3, "medium": 2, "low": 1}
+SOIL_SCORE      = {"high": 3, "medium": 2, "low": 1}
 ELEV_BAND_SCORE = {"mountain": 3, "piedmont": 2, "coastal": 1}
 
+
 # ---------------------------------------------------------------------------
-# Elevation fallback: bilinear interpolation over a coarse NC grid
-# Values derived from USGS 30-arc-second DEM averages per 0.5° cell.
-# Covers lat 33.8–36.6, lng -84.4 to -75.4 (NC bounding box + buffer).
+# Elevation fallback grid (coarse 0.5° NC DEM, values in feet)
 # ---------------------------------------------------------------------------
 _ELEV_GRID = {
-    # (lat_bin, lng_bin): approx elevation in feet
-    # lat bins: floor(lat*2)/2  lng bins: floor(lng*2)/2
-    # Western mountains
     (36.0, -84.0): 3200, (36.0, -83.5): 3400, (36.0, -83.0): 3600,
     (36.0, -82.5): 4100, (36.0, -82.0): 3800, (36.0, -81.5): 2900,
     (36.0, -81.0): 2200, (36.0, -80.5): 1200, (36.0, -80.0):  900,
@@ -84,43 +124,48 @@ _ELEV_GRID = {
     (34.0, -76.5):    8, (34.0, -76.0):    5,
 }
 
+
 def _fallback_elevation(lat: float, lng: float) -> float:
-    """Bilinear interpolation from the coarse NC elevation grid."""
     lat0 = math.floor(lat * 2) / 2
     lng0 = math.floor(lng * 2) / 2
     lat1, lng1 = lat0 + 0.5, lng0 + 0.5
-    corners = [
-        (lat0, lng0), (lat0, lng1),
-        (lat1, lng0), (lat1, lng1),
-    ]
+    corners = [(lat0, lng0), (lat0, lng1), (lat1, lng0), (lat1, lng1)]
     vals = [_ELEV_GRID.get(c) for c in corners]
     known = [(c, v) for c, v in zip(corners, vals) if v is not None]
     if not known:
-        # Last resort: longitude-based heuristic for NC
-        if lng < -81.0:
-            return 2500.0
-        elif lng < -79.0:
-            return 700.0
-        else:
-            return 50.0
+        if lng < -81.0: return 2500.0
+        elif lng < -79.0: return 700.0
+        else: return 50.0
     if len(known) == 4:
         tx = (lat - lat0) / 0.5
         ty = (lng - lng0) / 0.5
         v00, v01, v10, v11 = vals
-        return (v00*(1-tx)*(1-ty) + v01*(1-tx)*ty +
-                v10*tx*(1-ty)    + v11*tx*ty)
-    # Weighted average of known corners by inverse distance
+        return v00*(1-tx)*(1-ty) + v01*(1-tx)*ty + v10*tx*(1-ty) + v11*tx*ty
     total_w, total_v = 0.0, 0.0
     for (clat, clng), v in known:
         d = math.hypot(lat - clat, lng - clng) + 1e-9
         w = 1.0 / d
-        total_w += w
-        total_v += w * v
+        total_w += w; total_v += w * v
     return total_v / total_w
 
 
-def get_elevation(lat: float, lng: float) -> float:
-    """Fetch elevation from USGS EPQS with retries; fall back to grid estimate."""
+def _geology_from_elevation(elevation_ft: float) -> tuple[str, str]:
+    """
+    When the geology API fails or returns unrecognisable lithology,
+    infer geology from elevation — a reliable proxy for NC bedrock zones.
+    """
+    if elevation_ft >= 2000:
+        return "granite_gneiss",   "estimated from elevation (mountain zone)"
+    elif elevation_ft >= 800:
+        return "schist_phyllite",  "estimated from elevation (upper piedmont)"
+    elif elevation_ft >= 400:
+        return "triassic_basin",   "estimated from elevation (piedmont/triassic)"
+    else:
+        return "coastal_sediment", "estimated from elevation (coastal plain)"
+
+
+def get_elevation(lat: float, lng: float) -> tuple[float, bool]:
+    """Returns (elevation_ft, is_estimated)."""
     url = "https://epqs.nationalmap.gov/v1/json"
     params = {"x": lng, "y": lat, "units": "Feet", "includeDate": False}
     for timeout in (12, 20):
@@ -129,15 +174,14 @@ def get_elevation(lat: float, lng: float) -> float:
             r.raise_for_status()
             val = r.json().get("value")
             if val is not None:
-                return float(val)
+                return float(val), False
         except Exception:
             continue
-    # Both attempts failed — use local grid fallback
-    return _fallback_elevation(lat, lng)
+    return _fallback_elevation(lat, lng), True
 
 
-def get_geology(lat: float, lng: float) -> tuple[str, str]:
-    """Fetch bedrock geology from Macrostrat with a fallback."""
+def get_geology(lat: float, lng: float, elevation_ft: float) -> tuple[str, str, bool]:
+    """Returns (geology_key, geology_raw, is_estimated)."""
     try:
         r = requests.get(
             "https://macrostrat.org/api/v2/geologic_units/map",
@@ -145,32 +189,29 @@ def get_geology(lat: float, lng: float) -> tuple[str, str]:
             timeout=15,
         )
         r.raise_for_status()
-        data = r.json()
-        features = data.get("success", {}).get("data", [])
+        features = r.json().get("success", {}).get("data", [])
         if features:
             unit = features[0]
             lith_desc = (unit.get("lith") or unit.get("descrip") or unit.get("name") or "").lower()
-            geology_key = "coastal_sediment"
+            geology_key = None
             for keyword, key in USGS_LITH_MAP.items():
                 if keyword in lith_desc:
                     geology_key = key
                     break
-            return geology_key, lith_desc
+            if geology_key:
+                return geology_key, lith_desc, False
+            # API responded but we couldn't classify the lithology —
+            # fall through to elevation-based estimate rather than
+            # wrongly returning "coastal_sediment"
     except Exception:
         pass
-    # Fallback: longitude-based NC region heuristic
-    if lng < -81.0:
-        return "granite_gneiss", "unknown (mountain fallback)"
-    elif lng < -79.5:
-        return "schist_phyllite", "unknown (piedmont fallback)"
-    elif lng < -78.0:
-        return "triassic_basin", "unknown (central fallback)"
-    else:
-        return "coastal_sediment", "unknown (coastal fallback)"
+
+    key, raw = _geology_from_elevation(elevation_ft)
+    return key, raw, True
 
 
-def get_soil_permeability(lat: float, lng: float) -> str:
-    """Fetch soil ksat from USDA SDA with a fallback."""
+def get_soil_permeability(lat: float, lng: float) -> tuple[str, bool]:
+    """Returns (permeability_class, is_estimated)."""
     point_wkt = f"POINT({lng} {lat})"
     query = f"""
         SELECT TOP 1 ch.ksat_r
@@ -194,26 +235,22 @@ def get_soil_permeability(lat: float, lng: float) -> str:
         rows = r.json().get("Table", [])
         if rows and rows[0][0] is not None:
             ksat = float(rows[0][0])
-            if ksat > 10:
-                return "high"
-            elif ksat > 1:
-                return "medium"
-            return "low"
+            if ksat > 10:   return "high",   False
+            elif ksat > 1:  return "medium", False
+            return "low", False
     except Exception:
         pass
-    # Fallback: longitude-based heuristic
-    if lng < -80.0:
-        return "low"    # clay soils in Piedmont/mountains
-    elif lng < -78.0:
-        return "medium"
-    return "high"       # sandy coastal plain
+    # Fallback: elevation-based (mountains = clay soils = low permeability)
+    if lng < -80.5:   return "low",    True   # mountain clay
+    elif lng < -78.5: return "medium", True   # piedmont loam
+    return "high", True                        # sandy coastal plain
 
 
-def get_uranium_prox(lat: float, lng: float, geology_key: str, geology_raw: str) -> float:
+def get_uranium_prox(geology_key: str, geology_raw: str) -> float:
     raw = geology_raw.lower()
-    if geology_key == "granite_gneiss" or any(w in raw for w in ("granite", "intrusive", "plutonic", "felsic")):
+    if geology_key == "granite_gneiss" or any(w in raw for w in ("granite", "intrusive", "plutonic", "felsic", "pegmatite")):
         return 0.85
-    elif geology_key == "schist_phyllite" or any(w in raw for w in ("schist", "metamorphic", "migmatite")):
+    elif geology_key == "schist_phyllite" or any(w in raw for w in ("schist", "metamorphic", "migmatite", "amphibolite")):
         return 0.65
     elif geology_key in ("limestone_marble", "mafic_volcanic"):
         return 0.35
@@ -221,34 +258,39 @@ def get_uranium_prox(lat: float, lng: float, geology_key: str, geology_raw: str)
 
 
 def elev_band(elevation_ft: float) -> str:
-    if elevation_ft >= 2000:
-        return "mountain"
-    elif elevation_ft >= 400:
-        return "piedmont"
+    if elevation_ft >= 2000:   return "mountain"
+    elif elevation_ft >= 400:  return "piedmont"
     return "coastal"
 
 
 def lookup(lat: float, lng: float) -> dict:
-    elevation               = get_elevation(lat, lng)
-    geology_key, geology_raw = get_geology(lat, lng)
-    soil_perm               = get_soil_permeability(lat, lng)
-    uranium_prox            = get_uranium_prox(lat, lng, geology_key, geology_raw)
-    band                    = elev_band(elevation)
+    elevation_ft, elev_estimated  = get_elevation(lat, lng)
+    geology_key, geology_raw, geo_estimated = get_geology(lat, lng, elevation_ft)
+    soil_perm, soil_estimated     = get_soil_permeability(lat, lng)
+    uranium_prox                  = get_uranium_prox(geology_key, geology_raw)
+    band                          = elev_band(elevation_ft)
+    any_estimated                 = elev_estimated or geo_estimated or soil_estimated
 
     return {
         "lat":             lat,
         "lng":             lng,
-        "elevation_ft":    round(elevation, 1),
+        "elevation_ft":    round(elevation_ft, 1),
         "geology":         geology_key,
         "geology_raw":     geology_raw,
         "soil_perm":       soil_perm,
         "uranium_prox":    uranium_prox,
         "elev_band":       band,
+        "estimated":       any_estimated,
+        "estimated_fields": {
+            "elevation": elev_estimated,
+            "geology":   geo_estimated,
+            "soil":      soil_estimated,
+        },
         "model_features": {
             "geology_score":   GEOLOGY_SCORE[geology_key],
             "soil_score":      SOIL_SCORE[soil_perm],
             "elev_band_score": ELEV_BAND_SCORE[band],
-            "elevation_ft":    round(elevation / 1000.0, 4),
+            "elevation_ft":    round(elevation_ft / 1000.0, 4),
             "uranium_prox":    uranium_prox,
         },
     }
@@ -256,5 +298,5 @@ def lookup(lat: float, lng: float) -> dict:
 
 if __name__ == "__main__":
     import json
-    result = lookup(35.2271, -80.8431)
+    result = lookup(35.5951, -82.5515)  # Asheville
     print(json.dumps(result, indent=2))
