@@ -337,6 +337,126 @@
       .map { min-height: unset; }
       #map { height: 100%; }
     }
+  
+    /* ── Result popup ── */
+    #result-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      z-index: 2000;
+      background: rgba(0,0,0,0.55);
+      align-items: center;
+      justify-content: center;
+    }
+    #result-overlay.open { display: flex; }
+    #result-popup {
+      background: var(--popup-bg);
+      border: 1px solid var(--popup-border);
+      border-radius: 16px;
+      padding: 24px;
+      width: min(380px, calc(100vw - 32px));
+      box-shadow: 0 12px 48px rgba(0,0,0,0.5);
+      animation: popIn 0.22s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    @keyframes popIn {
+      from { transform: scale(0.88); opacity: 0; }
+      to   { transform: scale(1);    opacity: 1; }
+    }
+    .result-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 18px;
+    }
+    .result-header h3 { margin: 0; font-size: 16px; font-weight: 600; }
+    .result-close {
+      width: 28px; height: 28px; border-radius: 6px;
+      border: 1px solid var(--popup-section-border);
+      background: transparent; color: var(--text-muted);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      padding: 0; font-size: 16px; font-family: inherit; line-height: 1;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .result-close:hover { border-color: var(--text-muted); color: var(--text-primary); }
+
+    /* big radon reading */
+    .radon-display {
+      text-align: center;
+      padding: 20px 0 16px;
+      border-bottom: 1px solid var(--popup-section-border);
+      margin-bottom: 16px;
+    }
+    .radon-value {
+      font-size: 52px; font-weight: 700; line-height: 1;
+      letter-spacing: -1px;
+    }
+    .radon-unit { font-size: 14px; color: var(--text-muted); margin-top: 4px; }
+    .radon-risk-badge {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 4px 14px;
+      border-radius: 20px;
+      font-size: 12px; font-weight: 600; letter-spacing: 0.04em;
+    }
+    .risk-low    { background: #dcfce7; color: #166534; }
+    .risk-medium { background: #fef9c3; color: #854d0e; }
+    .risk-high   { background: #fee2e2; color: #991b1b; }
+    [data-theme="dark"] .risk-low    { background: #14532d; color: #86efac; }
+    [data-theme="dark"] .risk-medium { background: #422006; color: #fde68a; }
+    [data-theme="dark"] .risk-high   { background: #450a0a; color: #fca5a5; }
+
+    /* detail rows */
+    .result-details { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+    .detail-row {
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 13px;
+    }
+    .detail-label { color: var(--text-muted); }
+    .detail-value { font-weight: 600; color: var(--text-primary); text-align: right; max-width: 60%; }
+
+    /* risk bar */
+    .risk-bar-wrap { margin-bottom: 16px; }
+    .risk-bar-label { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+    .risk-bar-track {
+      height: 10px; border-radius: 5px;
+      background: linear-gradient(90deg, #22c55e 0%, #eab308 45%, #ef4444 100%);
+      position: relative;
+    }
+    .risk-bar-needle {
+      position: absolute; top: -3px;
+      width: 4px; height: 16px;
+      background: var(--text-primary);
+      border-radius: 2px;
+      transform: translateX(-50%);
+      transition: left 0.5s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    .risk-bar-ticks {
+      display: flex; justify-content: space-between;
+      font-size: 10px; color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .result-footer-btn {
+      width: 100%; padding: 10px;
+      border-radius: 8px; border: none;
+      background: var(--accent); color: white;
+      font-size: 14px; font-family: "Inter", sans-serif; font-weight: 600;
+      cursor: pointer; transition: opacity 0.2s;
+    }
+    .result-footer-btn:hover { opacity: 0.85; }
+
+    /* loading spinner inside popup */
+    .result-loading {
+      text-align: center; padding: 32px 0;
+      color: var(--text-muted); font-size: 14px;
+    }
+    .spinner {
+      width: 36px; height: 36px; margin: 0 auto 12px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .result-error { text-align: center; padding: 24px 0; color: #ef4444; font-size: 14px; }
+
   </style>
 </head>
 <body>
@@ -484,6 +604,20 @@
     </div>
   </div>
 
+
+  <!-- Result popup -->
+  <div id="result-overlay" onclick="handleResultOverlayClick(event)">
+    <div id="result-popup">
+      <div class="result-header">
+        <h3>Radon Risk Estimate</h3>
+        <button class="result-close" onclick="closeResult()">✕</button>
+      </div>
+      <div id="result-body">
+        <!-- filled dynamically -->
+      </div>
+    </div>
+  </div>
+
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
     // ── Settings ──
@@ -530,11 +664,104 @@
 
     function confirmLocation() {
       if (pendingLat === null) return;
+      // Update confirmed panel
       document.getElementById("search-panel").style.display = "none";
       document.getElementById("confirmed-panel").style.display = "block";
       document.getElementById("confirmed-coords").textContent = `Lat: ${pendingLat}, Lng: ${pendingLng}`;
       document.getElementById("confirmed-address").textContent =
         document.getElementById("pending-address").textContent;
+
+      // Show result popup with loading state
+      document.getElementById("result-body").innerHTML = `
+        <div class="result-loading">
+          <div class="spinner"></div>
+          Fetching geo data & running model...
+        </div>`;
+      document.getElementById("result-overlay").classList.add("open");
+
+      // Call backend /predict
+      fetch("/predict", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lat: pendingLat, lng: pendingLng })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.error) {
+          document.getElementById("result-body").innerHTML =
+            `<div class="result-error">⚠️ ${data.error}</div>`;
+          return;
+        }
+        renderResult(data);
+      })
+      .catch(err => {
+        document.getElementById("result-body").innerHTML =
+          `<div class="result-error">⚠️ Request failed: ${err.message}</div>`;
+      });
+    }
+
+    function renderResult(d) {
+      const radon = d.radon_pci_l;
+      // EPA action level: 4 pCi/L; consider action at 2
+      let riskLabel, riskClass;
+      if (radon >= 4)      { riskLabel = "High Risk";    riskClass = "risk-high"; }
+      else if (radon >= 2) { riskLabel = "Moderate Risk"; riskClass = "risk-medium"; }
+      else                 { riskLabel = "Low Risk";      riskClass = "risk-low"; }
+
+      // Needle: cap scale at 10 pCi/L for display
+      const needlePct = Math.min(radon / 10, 1) * 100;
+
+      const geoLabel = d.geology.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      const soilLabel = d.soil_perm.charAt(0).toUpperCase() + d.soil_perm.slice(1);
+      const elevLabel = d.elev_band.charAt(0).toUpperCase() + d.elev_band.slice(1);
+
+      document.getElementById("result-body").innerHTML = `
+        <div class="radon-display">
+          <div class="radon-value" style="color:${radon >= 4 ? '#ef4444' : radon >= 2 ? '#eab308' : '#22c55e'}">${radon}</div>
+          <div class="radon-unit">pCi/L — picocuries per litre</div>
+          <span class="radon-risk-badge ${riskClass}">${riskLabel}</span>
+        </div>
+
+        <div class="risk-bar-wrap">
+          <div class="risk-bar-label">Risk Scale (EPA action level: 4 pCi/L)</div>
+          <div class="risk-bar-track">
+            <div class="risk-bar-needle" style="left:${needlePct}%"></div>
+          </div>
+          <div class="risk-bar-ticks"><span>0</span><span>2</span><span>4</span><span>6</span><span>8</span><span>10+</span></div>
+        </div>
+
+        <div class="result-details">
+          <div class="detail-row">
+            <span class="detail-label">Elevation</span>
+            <span class="detail-value">${d.elevation_ft.toLocaleString()} ft (${elevLabel})</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Bedrock Geology</span>
+            <span class="detail-value">${geoLabel}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Soil Permeability</span>
+            <span class="detail-value">${soilLabel}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Uranium Proximity</span>
+            <span class="detail-value">${(d.uranium_prox * 100).toFixed(0)}%</span>
+          </div>
+        </div>
+
+        ${d.geology_raw && d.geology_raw.includes('fallback') ? `
+          <div style="margin-bottom:12px;padding:8px 10px;border-radius:8px;background:var(--option-bg);border:1px solid var(--border);font-size:11px;color:var(--text-muted);line-height:1.5;">
+            ⚠️ One or more external APIs were unreachable. Regional estimates were used for this prediction — accuracy may be reduced.
+          </div>` : ''}
+        <button class="result-footer-btn" onclick="closeResult()">Close</button>
+      `;
+    }
+
+    function closeResult() {
+      document.getElementById("result-overlay").classList.remove("open");
+    }
+    function handleResultOverlayClick(e) {
+      if (e.target === document.getElementById("result-overlay")) closeResult();
     }
 
     function resetToSearch() {
