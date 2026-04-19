@@ -4,7 +4,7 @@ import pandas as pd
 from geo_lookup import lookup
 
 app = Flask(__name__)
-model = joblib.load("radon_model.pkl")
+model = joblib.load("/radon_model.pkl")
 
 
 @app.route("/")
