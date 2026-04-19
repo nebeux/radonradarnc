@@ -1,812 +1,630 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark" data-vision="normal">
-
+<html lang="en" data-theme="light" data-vision="normal">
 <head>
-	<meta charset="UTF-8" />
-	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-	<title>Radon Risk Estimator</title>
-	<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-	<script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
-	<style>
-		@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Radon Risk Estimator</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
 
-		/* ── DARK BASE ── */
-		:root {
-			--bg-page: #0f172a;
-			--bg-sidebar: #1e293b;
-			--bg-coords: #0f172a;
-			--bg-input: #0f172a;
-			--border: #334155;
-			--text-primary: #ffffff;
-			--text-muted: #94a3b8;
-			--text-info: rgb(0, 204, 255);
-			--text-blurb: rgb(0, 170, 255);
-			--accent: #3b82f6;
-			--accent-hover-bg: #ffffff;
-			--accent-hover-text: #3b82f6;
-			--loc-btn-bg: #0f172a;
-			--loc-btn-color: #94a3b8;
-			--loc-btn-hover-border: #60a5fa;
-			--loc-btn-hover-color: #60a5fa;
-			--coords-border: #1e293b;
-			--popup-bg: #1e293b;
-			--popup-border: #334155;
-			--popup-section-border: #334155;
-			--option-bg: #0f172a;
-			--option-border: #334155;
-			--option-active-border: #3b82f6;
-			--option-active-bg: #1e3a5f;
-			--option-active-text: #60a5fa;
-		}
+    :root {
+      --bg-page: #0f172a;
+      --bg-sidebar: #1e293b;
+      --bg-coords: #0f172a;
+      --bg-input: #0f172a;
+      --border: #334155;
+      --text-primary: #ffffff;
+      --text-muted: #94a3b8;
+      --text-info: rgb(0, 204, 255);
+      --text-blurb: rgb(0, 170, 255);
+      --accent: #3b82f6;
+      --accent-hover-bg: #ffffff;
+      --accent-hover-text: #3b82f6;
+      --loc-btn-bg: #0f172a;
+      --loc-btn-color: #94a3b8;
+      --loc-btn-hover-border: #60a5fa;
+      --loc-btn-hover-color: #60a5fa;
+      --coords-border: #1e293b;
+      --popup-bg: #1e293b;
+      --popup-border: #334155;
+      --popup-section-border: #334155;
+      --option-bg: #0f172a;
+      --option-border: #334155;
+      --option-active-border: #3b82f6;
+      --option-active-bg: #1e3a5f;
+      --option-active-text: #60a5fa;
+    }
 
-		/* ── LIGHT ── */
-		[data-theme="light"] {
-			--bg-page: #e8f0fb;
-			--bg-sidebar: #dbeafe;
-			--bg-coords: #bfdbfe;
-			--bg-input: #eff6ff;
-			--border: #93c5fd;
-			--text-primary: #0f172a;
-			--text-muted: #475569;
-			--text-info: #0369a1;
-			--text-blurb: #0284c7;
-			--accent: #3b82f6;
-			--accent-hover-bg: #1d4ed8;
-			--accent-hover-text: #ffffff;
-			--loc-btn-bg: #eff6ff;
-			--loc-btn-color: #3b82f6;
-			--loc-btn-hover-border: #2563eb;
-			--loc-btn-hover-color: #1d4ed8;
-			--coords-border: #93c5fd;
-			--popup-bg: #f0f7ff;
-			--popup-border: #93c5fd;
-			--popup-section-border: #bfdbfe;
-			--option-bg: #eff6ff;
-			--option-border: #93c5fd;
-			--option-active-border: #2563eb;
-			--option-active-bg: #dbeafe;
-			--option-active-text: #1d4ed8;
-		}
+    [data-theme="light"] {
+      --bg-page: #e8f0fb;
+      --bg-sidebar: #dbeafe;
+      --bg-coords: #bfdbfe;
+      --bg-input: #eff6ff;
+      --border: #93c5fd;
+      --text-primary: #0f172a;
+      --text-muted: #475569;
+      --text-info: #0369a1;
+      --text-blurb: #0284c7;
+      --accent: #3b82f6;
+      --accent-hover-bg: #1d4ed8;
+      --accent-hover-text: #ffffff;
+      --loc-btn-bg: #eff6ff;
+      --loc-btn-color: #3b82f6;
+      --loc-btn-hover-border: #2563eb;
+      --loc-btn-hover-color: #1d4ed8;
+      --coords-border: #93c5fd;
+      --popup-bg: #f0f7ff;
+      --popup-border: #93c5fd;
+      --popup-section-border: #bfdbfe;
+      --option-bg: #eff6ff;
+      --option-border: #93c5fd;
+      --option-active-border: #2563eb;
+      --option-active-bg: #dbeafe;
+      --option-active-text: #1d4ed8;
+    }
 
-		/* ── COLORBLIND: Red-Green (Protanopia/Deuteranopia) ── */
-		[data-vision="rg"] {
-			--text-info: #0099cc;
-			--text-blurb: #0077aa;
-			--accent: #0077bb;
-			--accent-hover-bg: #005588;
-			--accent-hover-text: #ffffff;
-			--loc-btn-color: #0077bb;
-			--loc-btn-hover-border: #005588;
-			--loc-btn-hover-color: #004466;
-			--option-active-border: #0077bb;
-			--option-active-bg: #cce5f5;
-			--option-active-text: #005588;
-		}
+    * { transition: background-color 0.25s, color 0.25s, border-color 0.25s, filter 0.3s; }
 
-		[data-theme="light"][data-vision="rg"] {
-			--text-info: #005588;
-			--text-blurb: #0077aa;
-			--accent: #0077bb;
-			--accent-hover-bg: #004466;
-			--accent-hover-text: #ffffff;
-			--loc-btn-color: #0077bb;
-			--loc-btn-hover-border: #004466;
-			--loc-btn-hover-color: #004466;
-			--option-active-border: #0077bb;
-			--option-active-bg: #cce5f5;
-			--option-active-text: #004466;
-		}
+    body {
+      margin: 0; padding: 0;
+      font-family: "Inter", sans-serif;
+      background: var(--bg-page);
+      color: var(--text-primary);
+    }
 
-		/* ── COLORBLIND: Tritanopia (Blue-Yellow) ── */
-		[data-vision="by"] {
-			--text-info: #ee6622;
-			--text-blurb: #cc4400;
-			--accent: #cc3300;
-			--accent-hover-bg: #991f00;
-			--accent-hover-text: #ffffff;
-			--loc-btn-color: #cc3300;
-			--loc-btn-hover-border: #991f00;
-			--loc-btn-hover-color: #7a1800;
-			--option-active-border: #cc3300;
-			--option-active-bg: #ffe5dd;
-			--option-active-text: #991f00;
-		}
+    [data-vision="normal"] body   { filter: none; }
+    [data-vision="protanopia"] body    { filter: url(#protanopia-filter); }
+    [data-vision="deuteranopia"] body  { filter: url(#deuteranopia-filter); }
+    [data-vision="tritanopia"] body    { filter: url(#tritanopia-filter); }
+    [data-vision="achromatopsia"] body { filter: url(#achromatopsia-filter); }
 
-		[data-theme="light"][data-vision="by"] {
-			--text-info: #991f00;
-			--text-blurb: #cc3300;
-			--accent: #cc3300;
-			--accent-hover-bg: #7a1800;
-			--accent-hover-text: #ffffff;
-			--loc-btn-color: #cc3300;
-			--loc-btn-hover-border: #7a1800;
-			--loc-btn-hover-color: #7a1800;
-			--option-active-border: #cc3300;
-			--option-active-bg: #ffe5dd;
-			--option-active-text: #7a1800;
-		}
+    .container {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      gap: 10px;
+      padding: 10px;
+      box-sizing: border-box;
+    }
+    .sidebar {
+      width: 100%;
+      background: var(--bg-sidebar);
+      border-radius: 12px;
+      padding: 16px;
+      box-sizing: border-box;
+      overflow-y: auto;
+    }
+    .sidebar-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 2px;
+    }
+    .sidebar h2 { margin: 0; font-size: 18px; }
+    .sidebar h3 { margin-top: 16px; font-size: 15px; font-weight: 600; }
 
-		/* ── COLORBLIND: Monochromacy ── */
-		[data-vision="mono"] {
-			--text-info: #aaaaaa;
-			--text-blurb: #888888;
-			--accent: #777777;
-			--accent-hover-bg: #aaaaaa;
-			--accent-hover-text: #000000;
-			--loc-btn-color: #aaaaaa;
-			--loc-btn-hover-border: #888888;
-			--loc-btn-hover-color: #cccccc;
-			--option-active-border: #888888;
-			--option-active-bg: #333333;
-			--option-active-text: #ffffff;
-		}
+    .settings-btn {
+      width: 34px; height: 34px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg-input);
+      color: var(--text-primary);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; padding: 0;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .settings-btn:hover { border-color: var(--loc-btn-hover-border); }
 
-		[data-theme="light"][data-vision="mono"] {
-			--text-info: #555555;
-			--text-blurb: #777777;
-			--accent: #555555;
-			--accent-hover-bg: #333333;
-			--accent-hover-text: #ffffff;
-			--loc-btn-color: #555555;
-			--loc-btn-hover-border: #333333;
-			--loc-btn-hover-color: #222222;
-			--option-active-border: #555555;
-			--option-active-bg: #dddddd;
-			--option-active-text: #222222;
-		}
+    /* ── Search panel (step 1) ── */
+    #search-panel { margin-top: 12px; }
 
-		* {
-			transition: background-color 0.25s, color 0.25s, border-color 0.25s;
-		}
+    .address-row { display: flex; gap: 6px; }
+    .address-row input {
+      flex: 1; padding: 7px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg-input);
+      color: var(--text-primary);
+      font-size: 13px; font-family: "Inter", sans-serif; outline: none;
+    }
+    .address-row input::placeholder { color: var(--text-muted); }
+    .address-row input:focus { border-color: var(--accent); }
+    .address-row button {
+      padding: 7px 12px; border-radius: 8px; border: none;
+      background: var(--accent); color: white;
+      font-size: 13px; font-family: "Inter", sans-serif;
+      cursor: pointer; white-space: nowrap;
+      transition: background 0.2s, color 0.2s;
+    }
+    .address-row button:hover { background: var(--accent-hover-bg); color: var(--accent-hover-text); }
+    .address-row button:disabled { background: var(--border); color: var(--text-muted); cursor: not-allowed; }
 
-		body {
-			margin: 0;
-			padding: 0;
-			font-family: "Inter", sans-serif;
-			background: var(--bg-page);
-			color: var(--text-primary);
-		}
+    .location-btn {
+      display: flex; align-items: center; justify-content: center; gap: 7px;
+      width: 100%; margin-top: 8px; padding: 8px 12px;
+      border-radius: 8px; border: 1px solid var(--border);
+      background: var(--loc-btn-bg); color: var(--loc-btn-color);
+      font-size: 13px; font-family: "Inter", sans-serif;
+      cursor: pointer; box-sizing: border-box;
+      transition: border-color 0.2s, color 0.2s, background 0.2s;
+    }
+    .location-btn:hover { border-color: var(--loc-btn-hover-border); color: var(--loc-btn-hover-color); }
+    .location-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .location-btn svg { flex-shrink: 0; }
 
-		.container {
-			display: flex;
-			flex-direction: column;
-			min-height: 100vh;
-			gap: 10px;
-			padding: 10px;
-			box-sizing: border-box;
-		}
+    /* hint shown under input while browsing map */
+    .map-hint {
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--text-muted);
+      text-align: center;
+      opacity: 0.8;
+    }
 
-		.sidebar {
-			width: 100%;
-			background: var(--bg-sidebar);
-			border-radius: 12px;
-			padding: 16px;
-			box-sizing: border-box;
-			overflow-y: auto;
-		}
+    /* pending marker info box */
+    #pending-box {
+      display: none;
+      margin-top: 10px;
+      padding: 10px;
+      background: var(--bg-coords);
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      font-size: 13px;
+    }
+    #pending-box .pending-coords {
+      color: var(--text-info);
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    #pending-box .pending-address {
+      color: var(--text-muted);
+      font-size: 12px;
+      line-height: 1.4;
+      margin-bottom: 10px;
+    }
+    .confirm-btn {
+      width: 100%;
+      padding: 9px;
+      border-radius: 8px;
+      border: none;
+      background: var(--accent);
+      color: white;
+      font-size: 13px;
+      font-family: "Inter", sans-serif;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, opacity 0.2s;
+    }
+    .confirm-btn:hover { opacity: 0.85; }
 
-		.sidebar-header {
-			display: flex;
-			align-items: center;
-			justify-content: space-between;
-			margin-bottom: 2px;
-		}
+    /* ── Confirmed location panel (step 2) ── */
+    #confirmed-panel {
+      display: none;
+      margin-top: 12px;
+    }
+    .confirmed-box {
+      padding: 12px;
+      background: var(--bg-coords);
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      font-size: 13px;
+    }
+    .confirmed-box .confirmed-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+    .confirmed-box .confirmed-coords {
+      color: var(--text-info);
+      font-weight: 600;
+      font-size: 14px;
+      margin-bottom: 6px;
+    }
+    .confirmed-box .confirmed-address {
+      color: var(--text-muted);
+      font-size: 12px;
+      line-height: 1.4;
+      margin-bottom: 10px;
+    }
+    .change-btn {
+      width: 100%;
+      padding: 7px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 12px;
+      font-family: "Inter", sans-serif;
+      cursor: pointer;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .change-btn:hover { border-color: var(--loc-btn-hover-border); color: var(--loc-btn-hover-color); }
 
-		.sidebar h2 {
-			margin: 0;
-			font-size: 18px;
-		}
+    .info {
+      font-size: 13px; opacity: 0.9;
+      margin-top: 10px;
+      color: var(--text-info);
+    }
+    .blurb {
+      font-size: 13px;
+      color: var(--text-blurb);
+      font-style: italic; opacity: 0.9;
+      margin-top: -5px;
+    }
 
-		.sidebar h3 {
-			margin-top: 12px;
-			font-size: 18px;
-		}
+    .map { flex: 1; min-height: 400px; border-radius: 12px; overflow: hidden; }
+    #map { width: 100%; height: 400px; }
 
-		.settings-btn {
-			width: 34px;
-			height: 34px;
-			border-radius: 8px;
-			border: 1px solid var(--border);
-			background: var(--bg-input);
-			color: var(--text-primary);
-			cursor: pointer;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			flex-shrink: 0;
-			padding: 0;
-			transition: border-color 0.2s, background 0.2s;
-		}
+    /* ── Settings popup ── */
+    .popup-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      z-index: 1000;
+      background: rgba(0,0,0,0.45);
+    }
+    .popup-overlay.open { display: flex; align-items: center; justify-content: center; }
+    .popup {
+      background: var(--popup-bg);
+      border: 1px solid var(--popup-border);
+      border-radius: 14px;
+      padding: 20px;
+      width: min(340px, calc(100vw - 40px));
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+    .popup-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 18px;
+    }
+    .popup-header h3 { margin: 0; font-size: 16px; font-weight: 600; color: var(--text-primary); }
+    .popup-close {
+      width: 28px; height: 28px; border-radius: 6px;
+      border: 1px solid var(--popup-section-border);
+      background: transparent; color: var(--text-muted);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      padding: 0; font-size: 16px; line-height: 1;
+      transition: border-color 0.2s, color 0.2s;
+    }
+    .popup-close:hover { border-color: var(--text-muted); color: var(--text-primary); }
+    .popup-section {
+      margin-bottom: 18px; padding-bottom: 18px;
+      border-bottom: 1px solid var(--popup-section-border);
+    }
+    .popup-section:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
+    .popup-section-label {
+      font-size: 11px; font-weight: 600; letter-spacing: 0.07em;
+      text-transform: uppercase; color: var(--text-muted); margin-bottom: 10px;
+    }
+    .theme-options { display: flex; gap: 8px; }
+    .theme-option {
+      flex: 1; padding: 8px 0; border-radius: 8px;
+      border: 1px solid var(--option-border); background: var(--option-bg);
+      color: var(--text-muted); font-size: 13px; font-family: "Inter", sans-serif;
+      cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
+      transition: border-color 0.15s, color 0.15s, background 0.15s;
+    }
+    .theme-option:hover { border-color: var(--loc-btn-hover-border); color: var(--text-primary); }
+    .theme-option.active {
+      border-color: var(--option-active-border); background: var(--option-active-bg);
+      color: var(--option-active-text); font-weight: 600;
+    }
+    .vision-options { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .vision-option {
+      padding: 10px; border-radius: 8px;
+      border: 1px solid var(--option-border); background: var(--option-bg);
+      color: var(--text-muted); font-size: 12px; font-family: "Inter", sans-serif;
+      cursor: pointer; display: flex; flex-direction: column; gap: 6px;
+      transition: border-color 0.15s, color 0.15s, background 0.15s; text-align: left;
+    }
+    .vision-option:hover { border-color: var(--loc-btn-hover-border); color: var(--text-primary); }
+    .vision-option.active {
+      border-color: var(--option-active-border); background: var(--option-active-bg);
+      color: var(--option-active-text); font-weight: 600;
+    }
+    .vision-option-name { font-size: 12px; font-weight: 600; }
+    .vision-option-desc { font-size: 10px; opacity: 0.75; line-height: 1.3; }
+    .vision-bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; gap: 2px; }
+    .vision-bar span { flex: 1; border-radius: 2px; }
 
-		.settings-btn:hover {
-			border-color: var(--loc-btn-hover-border);
-		}
-
-		.popup-overlay {
-			display: none;
-			position: fixed;
-			inset: 0;
-			z-index: 1000;
-			background: rgba(0, 0, 0, 0.45);
-		}
-
-		.popup-overlay.open {
-			display: flex;
-			align-items: center;
-			justify-content: center;
-		}
-
-		.popup {
-			background: var(--popup-bg);
-			border: 1px solid var(--popup-border);
-			border-radius: 14px;
-			padding: 20px;
-			width: min(320px, calc(100vw - 40px));
-			box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-			position: relative;
-		}
-
-		.popup-header {
-			display: flex;
-			align-items: center;
-			justify-content: space-between;
-			margin-bottom: 18px;
-		}
-
-		.popup-header h3 {
-			margin: 0;
-			font-size: 16px;
-			font-weight: 600;
-			color: var(--text-primary);
-		}
-
-		.popup-close {
-			width: 28px;
-			height: 28px;
-			border-radius: 6px;
-			border: 1px solid var(--popup-section-border);
-			background: transparent;
-			color: var(--text-muted);
-			cursor: pointer;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			padding: 0;
-			font-size: 16px;
-			line-height: 1;
-			transition: border-color 0.2s, color 0.2s;
-		}
-
-		.popup-close:hover {
-			border-color: var(--text-muted);
-			color: var(--text-primary);
-		}
-
-		.popup-section {
-			margin-bottom: 18px;
-			padding-bottom: 18px;
-			border-bottom: 1px solid var(--popup-section-border);
-		}
-
-		.popup-section:last-child {
-			margin-bottom: 0;
-			padding-bottom: 0;
-			border-bottom: none;
-		}
-
-		.popup-section-label {
-			font-size: 11px;
-			font-weight: 600;
-			letter-spacing: 0.07em;
-			text-transform: uppercase;
-			color: var(--text-muted);
-			margin-bottom: 10px;
-		}
-
-		.theme-options {
-			display: flex;
-			gap: 8px;
-		}
-
-		.theme-option {
-			flex: 1;
-			padding: 8px 0;
-			border-radius: 8px;
-			border: 1px solid var(--option-border);
-			background: var(--option-bg);
-			color: var(--text-muted);
-			font-size: 13px;
-			font-family: "Inter", sans-serif;
-			cursor: pointer;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			gap: 6px;
-			transition: border-color 0.15s, color 0.15s, background 0.15s;
-		}
-
-		.theme-option:hover {
-			border-color: var(--loc-btn-hover-border);
-			color: var(--text-primary);
-		}
-
-		.theme-option.active {
-			border-color: var(--option-active-border);
-			background: var(--option-active-bg);
-			color: var(--option-active-text);
-			font-weight: 600;
-		}
-
-		.vision-options {
-			display: grid;
-			grid-template-columns: 1fr 1fr;
-			gap: 8px;
-		}
-
-		.vision-option {
-			padding: 9px 10px;
-			border-radius: 8px;
-			border: 1px solid var(--option-border);
-			background: var(--option-bg);
-			color: var(--text-muted);
-			font-size: 12px;
-			font-family: "Inter", sans-serif;
-			cursor: pointer;
-			display: flex;
-			align-items: center;
-			gap: 8px;
-			transition: border-color 0.15s, color 0.15s, background 0.15s;
-			text-align: left;
-		}
-
-		.vision-option:hover {
-			border-color: var(--loc-btn-hover-border);
-			color: var(--text-primary);
-		}
-
-		.vision-option.active {
-			border-color: var(--option-active-border);
-			background: var(--option-active-bg);
-			color: var(--option-active-text);
-			font-weight: 600;
-		}
-
-		.vision-swatch {
-			display: flex;
-			gap: 3px;
-			flex-shrink: 0;
-		}
-
-		.vision-swatch span {
-			width: 10px;
-			height: 10px;
-			border-radius: 50%;
-			border: 1px solid rgba(128, 128, 128, 0.3);
-			display: block;
-		}
-
-		.info {
-			font-size: 13px;
-			opacity: 0.9;
-			margin-top: 10px;
-			color: var(--text-info);
-		}
-
-		.blurb {
-			font-size: 13px;
-			color: var(--text-blurb);
-			font-style: italic;
-			opacity: 0.9;
-			margin-top: -5px;
-		}
-
-		.map {
-			flex: 1;
-			min-height: 400px;
-			border-radius: 12px;
-			overflow: hidden;
-		}
-
-		#map {
-			width: 100%;
-			height: 400px;
-		}
-
-		.coords {
-			margin-top: 12px;
-			font-size: 13px;
-			padding: 8px;
-			background: var(--bg-coords);
-			border-radius: 8px;
-			color: var(--text-primary);
-		}
-
-		.coords .coord-line {
-			margin-bottom: 4px;
-		}
-
-		.coords .nearest-address {
-			margin-top: 6px;
-			padding-top: 6px;
-			border-top: 1px solid var(--coords-border);
-			color: var(--text-muted);
-			font-style: italic;
-			line-height: 1.4;
-		}
-
-		.address-row {
-			display: flex;
-			gap: 6px;
-			margin-top: 12px;
-		}
-
-		.address-row input {
-			flex: 1;
-			padding: 7px 10px;
-			border-radius: 8px;
-			border: 1px solid var(--border);
-			background: var(--bg-input);
-			color: var(--text-primary);
-			font-size: 13px;
-			font-family: "Inter", sans-serif;
-			outline: none;
-		}
-
-		.address-row input::placeholder {
-			color: var(--text-muted);
-		}
-
-		.address-row input:focus {
-			border-color: var(--accent);
-		}
-
-		.address-row button {
-			padding: 7px 12px;
-			border-radius: 8px;
-			border: none;
-			background: var(--accent);
-			color: white;
-			font-size: 13px;
-			font-family: "Inter", sans-serif;
-			cursor: pointer;
-			white-space: nowrap;
-			transition: background 0.2s, color 0.2s;
-		}
-
-		.address-row button:hover {
-			background: var(--accent-hover-bg);
-			color: var(--accent-hover-text);
-		}
-
-		.address-row button:disabled {
-			background: var(--border);
-			color: var(--text-muted);
-			cursor: not-allowed;
-		}
-
-		.location-btn {
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			gap: 7px;
-			width: 100%;
-			margin-top: 8px;
-			padding: 8px 12px;
-			border-radius: 8px;
-			border: 1px solid var(--border);
-			background: var(--loc-btn-bg);
-			color: var(--loc-btn-color);
-			font-size: 13px;
-			font-family: "Inter", sans-serif;
-			cursor: pointer;
-			box-sizing: border-box;
-			transition: border-color 0.2s, color 0.2s, background 0.2s;
-		}
-
-		.location-btn:hover {
-			border-color: var(--loc-btn-hover-border);
-			color: var(--loc-btn-hover-color);
-		}
-
-		.location-btn:disabled {
-			opacity: 0.4;
-			cursor: not-allowed;
-		}
-
-		.location-btn svg {
-			flex-shrink: 0;
-		}
-
-		@media (min-width: 640px) {
-			.container {
-				flex-direction: row;
-				height: 100vh;
-			}
-
-			.sidebar {
-				width: 300px;
-				flex-shrink: 0;
-			}
-
-			.map {
-				min-height: unset;
-			}
-
-			#map {
-				height: 100%;
-			}
-		}
-	</style>
+    @media (min-width: 640px) {
+      .container { flex-direction: row; height: 100vh; }
+      .sidebar { width: 300px; flex-shrink: 0; }
+      .map { min-height: unset; }
+      #map { height: 100%; }
+    }
+  </style>
 </head>
-
 <body>
 
-	<!-- Settings popup overlay -->
-	<div class="popup-overlay" id="popup-overlay" onclick="handleOverlayClick(event)">
-		<div class="popup">
-			<div class="popup-header">
-				<h3>Display Settings</h3>
-				<button class="popup-close" onclick="closeSettings()">✕</button>
-			</div>
+  <svg xmlns="http://www.w3.org/2000/svg" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">
+    <defs>
+      <filter id="protanopia-filter" color-interpolation-filters="linearRGB">
+        <feColorMatrix type="matrix" values="0.567,0.433,0,0,0 0.558,0.442,0,0,0 0,0.242,0.758,0,0 0,0,0,1,0"/>
+      </filter>
+      <filter id="deuteranopia-filter" color-interpolation-filters="linearRGB">
+        <feColorMatrix type="matrix" values="0.625,0.375,0,0,0 0.7,0.3,0,0,0 0,0.3,0.7,0,0 0,0,0,1,0"/>
+      </filter>
+      <filter id="tritanopia-filter" color-interpolation-filters="linearRGB">
+        <feColorMatrix type="matrix" values="0.95,0.05,0,0,0 0,0.433,0.567,0,0 0,0.475,0.525,0,0 0,0,0,1,0"/>
+      </filter>
+      <filter id="achromatopsia-filter" color-interpolation-filters="linearRGB">
+        <feColorMatrix type="matrix" values="0.299,0.587,0.114,0,0 0.299,0.587,0.114,0,0 0.299,0.587,0.114,0,0 0,0,0,1,0"/>
+        <feComponentTransfer>
+          <feFuncR type="linear" slope="1.2" intercept="-0.05"/>
+          <feFuncG type="linear" slope="1.2" intercept="-0.05"/>
+          <feFuncB type="linear" slope="1.2" intercept="-0.05"/>
+        </feComponentTransfer>
+      </filter>
+    </defs>
+  </svg>
 
-			<div class="popup-section">
-				<div class="popup-section-label">Theme</div>
-				<div class="theme-options">
-					<button class="theme-option active" id="theme-dark" onclick="setTheme('dark')">
-						<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-							stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-							<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-						</svg>
-						Dark
-					</button>
-					<button class="theme-option" id="theme-light" onclick="setTheme('light')">
-						<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-							stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-							<circle cx="12" cy="12" r="5" />
-							<line x1="12" y1="1" x2="12" y2="3" />
-							<line x1="12" y1="21" x2="12" y2="23" />
-							<line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-							<line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-							<line x1="1" y1="12" x2="3" y2="12" />
-							<line x1="21" y1="12" x2="23" y2="12" />
-							<line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-							<line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-						</svg>
-						Light
-					</button>
-				</div>
-			</div>
+  <!-- Settings popup -->
+  <div class="popup-overlay" id="popup-overlay" onclick="handleOverlayClick(event)">
+    <div class="popup">
+      <div class="popup-header">
+        <h3>Display Settings</h3>
+        <button class="popup-close" onclick="closeSettings()">✕</button>
+      </div>
+      <div class="popup-section">
+        <div class="popup-section-label">Theme</div>
+        <div class="theme-options">
+          <button class="theme-option" id="theme-dark" onclick="setTheme('dark')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            Dark
+          </button>
+          <button class="theme-option active" id="theme-light" onclick="setTheme('light')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+            Light
+          </button>
+        </div>
+      </div>
+      <div class="popup-section">
+        <div class="popup-section-label">Color Vision Mode</div>
+        <div class="vision-options">
+          <button class="vision-option active" id="vision-normal" onclick="setVision('normal')">
+            <div class="vision-bar"><span style="background:#e74c3c"></span><span style="background:#2ecc71"></span><span style="background:#3498db"></span><span style="background:#f39c12"></span></div>
+            <div class="vision-option-name">Normal</div>
+            <div class="vision-option-desc">Full color vision</div>
+          </button>
+          <button class="vision-option" id="vision-protanopia" onclick="setVision('protanopia')">
+            <div class="vision-bar"><span style="background:#9a8c00"></span><span style="background:#9a8c00"></span><span style="background:#1a6bbd"></span><span style="background:#c8b400"></span></div>
+            <div class="vision-option-name">Protanopia</div>
+            <div class="vision-option-desc">Red cone absence</div>
+          </button>
+          <button class="vision-option" id="vision-deuteranopia" onclick="setVision('deuteranopia')">
+            <div class="vision-bar"><span style="background:#b8a000"></span><span style="background:#b8a000"></span><span style="background:#2255aa"></span><span style="background:#d4b800"></span></div>
+            <div class="vision-option-name">Deuteranopia</div>
+            <div class="vision-option-desc">Green cone absence</div>
+          </button>
+          <button class="vision-option" id="vision-tritanopia" onclick="setVision('tritanopia')">
+            <div class="vision-bar"><span style="background:#e04040"></span><span style="background:#00a0a0"></span><span style="background:#008080"></span><span style="background:#c04040"></span></div>
+            <div class="vision-option-name">Tritanopia</div>
+            <div class="vision-option-desc">Blue cone absence</div>
+          </button>
+          <button class="vision-option" id="vision-achromatopsia" onclick="setVision('achromatopsia')" style="grid-column: span 2;">
+            <div class="vision-bar"><span style="background:#666"></span><span style="background:#aaa"></span><span style="background:#555"></span><span style="background:#999"></span></div>
+            <div class="vision-option-name">Achromatopsia</div>
+            <div class="vision-option-desc">No color vision — full grayscale</div>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 
-			<div class="popup-section">
-				<div class="popup-section-label">Color Vision Mode</div>
-				<div class="vision-options">
+  <div class="container">
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <h2>NC Radon Predictor</h2>
+        <button class="settings-btn" onclick="openSettings()" title="Display settings">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+        </button>
+      </div>
 
-					<button class="vision-option active" id="vision-normal" onclick="setVision('normal')">
-						<div class="vision-swatch">
-							<span style="background:#e74c3c"></span>
-							<span style="background:#2ecc71"></span>
-							<span style="background:#3498db"></span>
-						</div>
-						<span>Normal</span>
-					</button>
+      <div class="blurb">Detects Radon Concentration In NC</div>
+      <div class="info">Click the map, enter an address, or use your current location to begin.</div>
 
-					<button class="vision-option" id="vision-rg" onclick="setVision('rg')">
-						<div class="vision-swatch">
-							<span style="background:#7b7b00"></span>
-							<span style="background:#7b7b00"></span>
-							<span style="background:#0077bb"></span>
-						</div>
-						<span>Red-Green</span>
-					</button>
+      <!-- Step 1: search controls -->
+      <div id="search-panel">
+        <div class="address-row" style="margin-top:12px;">
+          <input type="text" id="address-input" placeholder="Enter NC address..." />
+          <button id="search-btn" onclick="geocodeAddress()">Find</button>
+        </div>
+        <button class="location-btn" id="location-btn" onclick="useCurrentLocation()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><path d="M12 5a7 7 0 1 1 0 14A7 7 0 0 1 12 5z"/>
+          </svg>
+          Use Current Location
+        </button>
+        <div class="map-hint">— or click anywhere on the map —</div>
 
-					<button class="vision-option" id="vision-by" onclick="setVision('by')">
-						<div class="vision-swatch">
-							<span style="background:#cc3300"></span>
-							<span style="background:#999900"></span>
-							<span style="background:#aaaaaa"></span>
-						</div>
-						<span>Blue-Yellow</span>
-					</button>
+        <!-- Pending marker preview + confirm button -->
+        <div id="pending-box">
+          <div class="pending-coords" id="pending-coords"></div>
+          <div class="pending-address" id="pending-address">Looking up address...</div>
+          <button class="confirm-btn" onclick="confirmLocation()">
+            Confirm Location
+          </button>
+        </div>
+      </div>
 
-					<button class="vision-option" id="vision-mono" onclick="setVision('mono')">
-						<div class="vision-swatch">
-							<span style="background:#888"></span>
-							<span style="background:#bbb"></span>
-							<span style="background:#444"></span>
-						</div>
-						<span>Monochrome</span>
-					</button>
+      <!-- Step 2: confirmed location display -->
+      <div id="confirmed-panel">
+        <div class="confirmed-box">
+          <div class="confirmed-label">Selected Location</div>
+          <div class="confirmed-coords" id="confirmed-coords"></div>
+          <div class="confirmed-address" id="confirmed-address"></div>
+          <button class="change-btn" onclick="resetToSearch()">
+            ← Change location
+          </button>
+        </div>
+      </div>
 
-				</div>
-			</div>
-		</div>
-	</div>
+      <h3>What is Radon?</h3>
+      <div class="info">
+        Radon is a natural radioactive gas you can’t see, smell, or taste. It can build up in homes and increase the risk of lung cancer over time.
+      </div>
 
-	<div class="container">
-		<div class="sidebar">
-			<div class="sidebar-header">
-				<h2>NC Radon Detector</h2>
-				<button class="settings-btn" onclick="openSettings()" title="Display settings">
-					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-						stroke-linecap="round" stroke-linejoin="round">
-						<circle cx="12" cy="12" r="3" />
-						<path
-							d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-					</svg>
-				</button>
-			</div>
+      <h3>Useful Links</h3>
+      <div class="info">
+        <a href="https://www.epa.gov/radon">EPA - Radon Article</a>
+      </div>
 
-			<div class="blurb">Detects Radon Concentration In NC</div>
-			<div class="info">Enter a North Carolina address or click the map to select a location.</div>
+    </div>
 
-			<div class="address-row">
-				<input type="text" id="address-input" placeholder="Enter NC address..." />
-				<button id="search-btn" onclick="geocodeAddress()">Find</button>
-			</div>
+    <div class="map">
+      <div id="map"></div>
+    </div>
+  </div>
 
-			<button class="location-btn" id="location-btn" onclick="useCurrentLocation()">
-				<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-					stroke-linecap="round" stroke-linejoin="round">
-					<circle cx="12" cy="12" r="3" />
-					<path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
-					<path d="M12 5a7 7 0 1 1 0 14A7 7 0 0 1 12 5z" />
-				</svg>
-				Use Current Location
-			</button>
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script>
+    // ── Settings ──
+    function openSettings()  { document.getElementById("popup-overlay").classList.add("open"); }
+    function closeSettings() { document.getElementById("popup-overlay").classList.remove("open"); }
+    function handleOverlayClick(e) { if (e.target === document.getElementById("popup-overlay")) closeSettings(); }
+    document.addEventListener("keydown", e => { if (e.key === "Escape") closeSettings(); });
 
-			<div class="coords" id="coords">No Location Selected</div>
+    function setTheme(theme) {
+      document.documentElement.setAttribute("data-theme", theme);
+      document.getElementById("theme-dark").classList.toggle("active", theme === "dark");
+      document.getElementById("theme-light").classList.toggle("active", theme === "light");
+    }
+    const visionModes = ["normal","protanopia","deuteranopia","tritanopia","achromatopsia"];
+    function setVision(mode) {
+      document.documentElement.setAttribute("data-vision", mode);
+      visionModes.forEach(m => document.getElementById("vision-" + m).classList.toggle("active", m === mode));
+    }
 
-			<h3>What is Radon?</h3>
-			<div class="info">
-				Radon is a naturally occurring, radioactive gas that is colorless, odorless, and tasteless, formed by
-				the breakdown of uranium, thorium, or radium in soil, rock, and groundwater. It is the second leading
-				cause of lung cancer after smoking, causing about 21,000 deaths annually, and enters buildings through
-				cracks in foundations.
-			</div>
-		</div>
+    // ── Map ──
+    const map = L.map('map').setView([35.5, -79.0], 7);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
 
-		<div class="map">
-			<div id="map"></div>
-		</div>
-	</div>
+    let marker = null;
+    let ncPolygon = null;
+    let pendingLat = null, pendingLng = null, pendingAddress = "";
 
-	<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-	<script>
-		// ── Settings popup ──
-		function openSettings() {
-			document.getElementById("popup-overlay").classList.add("open");
-		}
-		function closeSettings() {
-			document.getElementById("popup-overlay").classList.remove("open");
-		}
-		function handleOverlayClick(e) {
-			if (e.target === document.getElementById("popup-overlay")) closeSettings();
-		}
-		document.addEventListener("keydown", e => { if (e.key === "Escape") closeSettings(); });
+    fetch("https://raw.githubusercontent.com/python-visualization/folium/master/examples/data/us-states.json")
+      .then(r => r.json())
+      .then(data => { ncPolygon = data.features.find(f => f.properties.name === "North Carolina"); });
 
-		function setTheme(theme) {
-			document.documentElement.setAttribute("data-theme", theme);
-			document.getElementById("theme-dark").classList.toggle("active", theme === "dark");
-			document.getElementById("theme-light").classList.toggle("active", theme === "light");
-		}
+    // ── Two-step flow ──
+    function showPending(lat, lng) {
+      pendingLat = lat;
+      pendingLng = lng;
+      const box = document.getElementById("pending-box");
+      box.style.display = "block";
+      document.getElementById("pending-coords").textContent = `Lat: ${lat}, Lng: ${lng}`;
+      document.getElementById("pending-address").textContent = "Looking up address...";
+      reverseGeocode(lat, lng, "pending-address");
+    }
 
-		function setVision(mode) {
-			document.documentElement.setAttribute("data-vision", mode);
-			["normal", "rg", "by", "mono"].forEach(m => {
-				document.getElementById("vision-" + m).classList.toggle("active", m === mode);
-			});
-		}
+    function confirmLocation() {
+      if (pendingLat === null) return;
+      document.getElementById("search-panel").style.display = "none";
+      document.getElementById("confirmed-panel").style.display = "block";
+      document.getElementById("confirmed-coords").textContent = `Lat: ${pendingLat}, Lng: ${pendingLng}`;
+      document.getElementById("confirmed-address").textContent =
+        document.getElementById("pending-address").textContent;
+    }
 
-		// ── Map ──
-		const map = L.map('map').setView([35.5, -79.0], 7);
-		L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-			attribution: '© OpenStreetMap contributors'
-		}).addTo(map);
+    function resetToSearch() {
+      document.getElementById("confirmed-panel").style.display = "none";
+      document.getElementById("search-panel").style.display = "block";
+      document.getElementById("pending-box").style.display = "none";
+      if (marker) { map.removeLayer(marker); marker = null; }
+      pendingLat = null; pendingLng = null;
+    }
 
-		let marker = null;
-		let ncPolygon = null;
+    // ── Reverse geocode ──
+    async function reverseGeocode(lat, lng, targetId) {
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
+          { headers: { "Accept-Language": "en" } });
+        const data = await res.json();
+        if (data && data.display_name) {
+          const trimmed = data.display_name.split(",").map(s => s.trim()).slice(0, 5).join(", ");
+          document.getElementById(targetId).textContent = trimmed;
+          if (targetId === "pending-address") pendingAddress = trimmed;
+        }
+      } catch {
+        document.getElementById(targetId).textContent = "Could not retrieve address.";
+      }
+    }
 
-		fetch("https://raw.githubusercontent.com/python-visualization/folium/master/examples/data/us-states.json")
-			.then(res => res.json())
-			.then(data => {
-				ncPolygon = data.features.find(f => f.properties.name === "North Carolina");
-			});
+    // ── Place marker (pending state) ──
+    function placeMarker(latlng, lat, lng) {
+      if (marker) { marker.setLatLng(latlng); }
+      else { marker = L.marker(latlng).addTo(map); }
+      showPending(lat, lng);
+    }
 
-		async function reverseGeocode(lat, lng) {
-			const coordsBox = document.getElementById("coords");
-			try {
-				const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`;
-				const res = await fetch(url, { headers: { "Accept-Language": "en" } });
-				const data = await res.json();
-				if (data && data.display_name) {
-					const parts = data.display_name.split(",").map(s => s.trim());
-					const trimmed = parts.slice(0, 5).join(", ");
-					const addressEl = coordsBox.querySelector(".nearest-address");
-					if (addressEl) addressEl.textContent = trimmed;
-				}
-			} catch (err) {
-				const addressEl = coordsBox.querySelector(".nearest-address");
-				if (addressEl) addressEl.textContent = "Could not retrieve address.";
-			}
-		}
+    // ── Map click ──
+    map.on('click', function(e) {
+      if (!ncPolygon) return;
+      if (!turf.booleanPointInPolygon(turf.point([e.latlng.lng, e.latlng.lat]), ncPolygon)) return;
+      placeMarker(e.latlng, e.latlng.lat.toFixed(4), e.latlng.lng.toFixed(4));
+    });
 
-		function placeMarker(latlng, lat, lng) {
-			const coordsBox = document.getElementById("coords");
-			coordsBox.innerHTML = `
-        <div class="coord-line">Lat: ${lat}, Lng: ${lng}</div>
-        <div class="nearest-address">Looking up address...</div>
-      `;
-			if (marker) { marker.setLatLng(latlng); }
-			else { marker = L.marker(latlng).addTo(map); }
-			reverseGeocode(lat, lng);
-		}
+    // ── Current location ──
+    const locationSVG = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><path d="M12 5a7 7 0 1 1 0 14A7 7 0 0 1 12 5z"/></svg>`;
 
-		function useCurrentLocation() {
-			const coordsBox = document.getElementById("coords");
-			const btn = document.getElementById("location-btn");
-			const svgInner = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><path d="M12 5a7 7 0 1 1 0 14A7 7 0 0 1 12 5z"/></svg>`;
-			if (!navigator.geolocation) { coordsBox.innerText = "Geolocation is not supported by your browser."; return; }
-			btn.disabled = true; btn.textContent = "Locating...";
-			coordsBox.innerText = "Getting your location...";
-			navigator.geolocation.getCurrentPosition(
-				function (position) {
-					const lat = position.coords.latitude, lng = position.coords.longitude;
-					const latlng = L.latLng(lat, lng);
-					const point = turf.point([lng, lat]);
-					if (ncPolygon && !turf.booleanPointInPolygon(point, ncPolygon)) {
-						coordsBox.innerText = "Your location is outside North Carolina.";
-						btn.disabled = false; btn.innerHTML = svgInner + " Use Current Location"; return;
-					}
-					map.setView(latlng, 14);
-					placeMarker(latlng, lat.toFixed(4), lng.toFixed(4));
-					btn.disabled = false; btn.innerHTML = svgInner + " Use Current Location";
-				},
-				function (error) {
-					const messages = { 1: "Location access denied.", 2: "Location unavailable.", 3: "Request timed out." };
-					coordsBox.innerText = messages[error.code] || "Could not get your location.";
-					btn.disabled = false; btn.innerHTML = svgInner + " Use Current Location";
-				},
-				{ timeout: 10000 }
-			);
-		}
+    function useCurrentLocation() {
+      const btn = document.getElementById("location-btn");
+      if (!navigator.geolocation) return;
+      btn.disabled = true; btn.textContent = "Locating...";
+      navigator.geolocation.getCurrentPosition(
+        function(pos) {
+          const lat = pos.coords.latitude, lng = pos.coords.longitude;
+          const latlng = L.latLng(lat, lng);
+          btn.disabled = false; btn.innerHTML = locationSVG + " Use Current Location";
+          if (ncPolygon && !turf.booleanPointInPolygon(turf.point([lng, lat]), ncPolygon)) return;
+          map.setView(latlng, 14);
+          placeMarker(latlng, lat.toFixed(4), lng.toFixed(4));
+        },
+        function() {
+          btn.disabled = false; btn.innerHTML = locationSVG + " Use Current Location";
+        },
+        { timeout: 10000 }
+      );
+    }
 
-		map.on('click', function (e) {
-			const coordsBox = document.getElementById("coords");
-			const point = turf.point([e.latlng.lng, e.latlng.lat]);
-			if (!ncPolygon) { coordsBox.innerText = "Loading map data..."; return; }
-			if (!turf.booleanPointInPolygon(point, ncPolygon)) { coordsBox.innerText = "Location is out of NC"; return; }
-			placeMarker(e.latlng, e.latlng.lat.toFixed(4), e.latlng.lng.toFixed(4));
-		});
+    // ── Geocode address ──
+    async function geocodeAddress() {
+      const input = document.getElementById("address-input");
+      const btn = document.getElementById("search-btn");
+      const query = input.value.trim();
+      if (!query) return;
+      btn.disabled = true; btn.textContent = "...";
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query + ", North Carolina")}&format=json&limit=1`,
+          { headers: { "Accept-Language": "en" } });
+        const data = await res.json();
+        if (!data.length) { btn.disabled = false; btn.textContent = "Find"; return; }
+        const { lat, lon } = data[0];
+        const latlng = L.latLng(parseFloat(lat), parseFloat(lon));
+        if (ncPolygon && !turf.booleanPointInPolygon(turf.point([parseFloat(lon), parseFloat(lat)]), ncPolygon)) {
+          btn.disabled = false; btn.textContent = "Find"; return;
+        }
+        map.setView(latlng, 13);
+        placeMarker(latlng, parseFloat(lat).toFixed(4), parseFloat(lon).toFixed(4));
+      } catch { /* silent */ }
+      finally { btn.disabled = false; btn.textContent = "Find"; }
+    }
 
-		async function geocodeAddress() {
-			const input = document.getElementById("address-input");
-			const btn = document.getElementById("search-btn");
-			const coordsBox = document.getElementById("coords");
-			const query = input.value.trim();
-			if (!query) return;
-			btn.disabled = true; btn.textContent = "..."; coordsBox.innerText = "Searching...";
-			try {
-				const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query + ", North Carolina")}&format=json&limit=1`;
-				const res = await fetch(url, { headers: { "Accept-Language": "en" } });
-				const data = await res.json();
-				if (!data.length) { coordsBox.innerText = "Address not found. Try adding more detail."; return; }
-				const { lat, lon } = data[0];
-				const latlng = L.latLng(parseFloat(lat), parseFloat(lon));
-				const point = turf.point([parseFloat(lon), parseFloat(lat)]);
-				if (ncPolygon && !turf.booleanPointInPolygon(point, ncPolygon)) { coordsBox.innerText = "Address is outside North Carolina."; return; }
-				map.setView(latlng, 13);
-				placeMarker(latlng, parseFloat(lat).toFixed(4), parseFloat(lon).toFixed(4));
-			} catch (err) {
-				coordsBox.innerText = "Error looking up address. Please try again.";
-			} finally {
-				btn.disabled = false; btn.textContent = "Find";
-			}
-		}
-
-		document.getElementById("address-input").addEventListener("keydown", function (e) {
-			if (e.key === "Enter") geocodeAddress();
-		});
-	</script>
+    document.getElementById("address-input").addEventListener("keydown", e => {
+      if (e.key === "Enter") geocodeAddress();
+    });
+  </script>
 </body>
-
 </html>
