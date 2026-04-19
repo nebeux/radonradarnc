@@ -4,14 +4,14 @@ from xgboost import XGBRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, r2_score
 
-# ---------------------------------------------------------------------------
+
 # Domain knowledge
 # These values mirror what we'll get from real APIs:
 #   geology_type  <- USGS mrdata.usgs.gov state geology layer
 #   elevation_ft  <- USGS 3DEP elevation service (1/3 arc-second DEM)
 #   soil_perm     <- NCDEQ / USDA Web Soil Survey (ksat, saturated hydraulic conductivity)
 #   uranium_prox  <- derived from USGS geology vectors (distance to uraniferous units)
-# ---------------------------------------------------------------------------
+
 
 # Base radon (pCi/L) per bedrock type
 # Sources: EPA radon geology reports, USGS open-file reports on NC geology
@@ -41,10 +41,10 @@ SOIL_MULT = {
     "low":    0.75,   # ksat < 1 µm/s   — Cecil/Appling clay soils
 }
 
-# ---------------------------------------------------------------------------
+
 # Realistic NC geographic distributions for sampling
 # Based on actual land area proportions by geology and region
-# ---------------------------------------------------------------------------
+
 
 GEO_KEYS     = list(GEOLOGY_BASE.keys())
 GEO_WEIGHTS  = [0.28, 0.18, 0.06, 0.10, 0.10, 0.08, 0.20]  # sums to 1.0
@@ -123,10 +123,10 @@ def generate_dataset(n: int = 10_000, seed: int = 42) -> pd.DataFrame:
     })
 
 
-# ---------------------------------------------------------------------------
+
 # Feature encoding
 # Ordinal encoding mirrors how we'll encode API responses at inference time
-# ---------------------------------------------------------------------------
+
 
 GEOLOGY_SCORE = {
     "granite_gneiss":   6,
@@ -151,9 +151,7 @@ def encode(df: pd.DataFrame) -> pd.DataFrame:
     })
 
 
-# ---------------------------------------------------------------------------
 # Train
-# ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
     print("Generating 10,000 training samples...")
