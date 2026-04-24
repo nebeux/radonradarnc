@@ -1,45 +1,36 @@
-# RadonRadarNC
-
-**Most Innovative/Technical Award — UNC Charlotte Highschool Hackathon on April 19th**
-
-A web application that estimates residential radon risk for any location in North Carolina. Enter an address, drop a pin on the map, or use your current location — the app queries real geological and environmental data, runs it through a trained XGBoost model, and returns a predicted radon concentration in pCi/L with a plain-English breakdown of what's driving the estimate.
+<img width="3840" height="1440" alt="GitHub Banner (9)" src="https://github.com/user-attachments/assets/62d1da40-b0da-42fe-8f26-c3d5824b94fd" />
 
 ---
+## Achievement
 
-## What is Radon?
-
-Radon is a naturally occurring radioactive gas produced by the decay of uranium in bedrock. It's colorless, odorless, and the second leading cause of lung cancer in the US after smoking. North Carolina has significant radon variability — the western mountain counties (built on uranium-rich granite) can run 3–5× higher than the coastal plain. The only way to know for certain is to test your home, but this tool gives you a fast, data-driven starting point.
+Our team won the **Most Innovative Solution** award at the *College of Computing and Informatics **(UNCC)** 2026 Hackathon*.
 
 ---
+# NC Radon Radar - About The Project
 
+A web application that predicts radon (Rr) concentrations across North Carolina based on a clicked or searched map location. The frontend is built with HTML and the backend is a Flask API powered by a gradient boosting model.
+
+---
 ## How It Works
 
-When a location is confirmed, the backend fetches three real-time data sources:
+The user selects a location in North Carolina via the map or by entering an address. On confirmation, the frontend sends the coordinates to the Flask backend, which does three things:
 
-- **USGS Elevation Point Query Service** — actual elevation in feet at the coordinate
-- **Macrostrat Geologic Map API** — bedrock lithology (granite, schist, limestone, etc.)
-- **USDA Soil Data Access** — saturated hydraulic conductivity (ksat), used to classify soil permeability as high, medium, or low
+1. Fetches live environmental data for that coordinate from the Open-Meteo Air Quality and Elevation APIs — including SO2, NH3, PM2.5, CO, NO2, dust, and elevation
+2. Combines those live readings with geographic features derived from the coordinates (proximity to hog farm clusters, wetlands, industrial corridors, coastal plain classification, etc.)
+3. Runs the combined feature vector through a trained gradient boosting model and returns a predicted H2S concentration in PPM, a risk level, and the top contributing factors
 
-These are mapped to five model features: geology score, soil score, elevation band score, normalized elevation, and uranium proximity. The XGBoost regressor outputs a predicted radon level in pCi/L.
-
-If any external API is unavailable, the app falls back to regional estimates derived from elevation — mountain zone → granite/gneiss, upper piedmont → schist, piedmont → Triassic basin, coastal plain → sediment. Fallback fields are flagged in the UI.
+The model was trained on 100K rows of simulated North Carolina data constructed from domain knowledge about H2S sources in the state — primarily concentrated animal feeding operations in the eastern coastal plain, wetland estuary zones, and industrial corridors along I-85 and I-40.
 
 ---
-
-## Stack
-
-| Layer | Technology |
-|---|---|
-| Backend | Python, Flask, Gunicorn |
-| ML Model | XGBoost (trained on synthetic NC radon data) |
-| Geo APIs | USGS EPQS, Macrostrat, USDA SDA |
-| Frontend | Vanilla JS, Leaflet.js, Turf.js |
-| Deployment | Render |
+## Authors
+Built by **codersushi (SushiTheCoder)**, **nebeux (Krish Sakthivel)**, **sumeete123 (summete)**, and **coder175 (green)**  for the 2026 UNCC Hackathon!
 
 ---
+## Live Demo
+https://radonradar.onrender.com
 
+---
 ## Project Structure
-
 ```
 .
 ├── app.py                  # Flask app and /predict endpoint
@@ -54,10 +45,17 @@ If any external API is unavailable, the app falls back to regional estimates der
 └── static/
     └── styles.css
 ```
+---
+## Built With
+| Layer | Technology |
+|---|---|
+| Backend | Python, Flask, Gunicorn |
+| ML Model | XGBoost (trained on synthetic NC radon data) |
+| Geo APIs | USGS EPQS, Macrostrat, USDA SDA |
+| Frontend | Vanilla JS, Leaflet.js, Turf.js |
+| Deployment | Render |
 
 ---
-
-
 ## API
 
 ### `POST /predict`
@@ -89,13 +87,21 @@ If any external API is unavailable, the app falls back to regional estimates der
 The EPA recommends taking action at **4 pCi/L** and considering action at **2 pCi/L**. The US indoor average is 1.3 pCi/L.
 
 ---
+## Live Data Sources
 
+All external data is fetched at prediction time with no API key required.
+
+| Source | Data |
+|---|---|
+| Open-Meteo Air Quality API | SO2, NH3, PM2.5, CO, NO2, dust |
+| Open-Meteo Elevation API | Elevation in meters |
+
+---
 ## Accessibility
 
 The UI includes a colorblind mode selector (protanopia, deuteranopia, tritanopia, achromatopsia) and a light/dark theme toggle, both accessible via the settings panel.
 
 ---
-
 ## Limitations
 
 - The model was trained on synthetic data generated from domain knowledge and NC geological surveys, not measured radon readings. Predictions are estimates, not measurements.
